@@ -45,7 +45,7 @@ const App = () => {
 
       <LoginForm show={page === 'login'} setToken={setToken} />
 
-      <Recommended show={page === 'recommended'} />
+      <Recommended show={page === 'recommended'} genre={null} />
     </div>
   );
 };
