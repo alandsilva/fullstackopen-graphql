@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { ApolloServer, gql } = require('apollo-server');
+const { ApolloServer, gql, UserInputError } = require('apollo-server');
 const mongoose = require('mongoose');
 
 const Author = require('./models/author');
@@ -74,25 +74,42 @@ const resolvers = {
     addBook: async (root, args) => {
       const author = await Author.findOne({ name: args.author });
       if (!author) {
-        const authorToSave = new Author({ name: args.author });
-        const newAuthor = await authorToSave.save();
-
-        const book = new Book({ ...args, author: newAuthor.id });
-        const newBook = await book.save();
-        return newBook;
+        try {
+          const authorToSave = new Author({ name: args.author });
+          const newAuthor = await authorToSave.save();
+          const book = new Book({ ...args, author: newAuthor.id });
+          const newBook = await book.save();
+          return newBook;
+        } catch (error) {
+          throw new UserInputError(error.message, {
+            invalidArgs: args,
+          });
+        }
       }
 
-      const book = new Book({ ...args, author: author.id });
-      const newBook = await book.save();
-      return newBook;
+      try {
+        const book = new Book({ ...args, author: author.id });
+        const newBook = await book.save();
+        return newBook;
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        });
+      }
     },
     editAuthor: async (root, args) => {
-      const updatedAuthor = await Author.findOneAndUpdate(
-        { name: args.name },
-        { born: args.setBornTo },
-        { new: true }
-      );
-      return updatedAuthor;
+      try {
+        const updatedAuthor = await Author.findOneAndUpdate(
+          { name: args.name },
+          { born: args.setBornTo },
+          { new: true }
+        );
+        return updatedAuthor;
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        });
+      }
     },
   },
 
