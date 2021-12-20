@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
-import { useQuery } from '@apollo/client';
+import React, { useState, useEffect } from 'react';
+import { useLazyQuery } from '@apollo/client';
 import { ALL_BOOKS } from '../queries';
 
 const Books = (props) => {
   const [genre, setGenre] = useState(null);
-  const result = useQuery(ALL_BOOKS);
+  const [getBooks, result] = useLazyQuery(ALL_BOOKS);
+  const [books, setBooks] = useState([]);
+
+  useEffect(() => {
+    console.log('getting books');
+    getBooks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genre]);
+
+  useEffect(() => {
+    if (result.data) {
+      setBooks(result.data.allBooks);
+    }
+  }, [result]);
 
   if (!props.show) {
     return null;
@@ -13,7 +26,7 @@ const Books = (props) => {
     return <div>Loading...</div>;
   }
 
-  const books = result.data.allBooks;
+  // const books = result.data.allBooks;
 
   let genres = new Set();
   books.forEach((book) => {
