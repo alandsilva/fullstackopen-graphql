@@ -14,6 +14,9 @@ const User = require('./models/user');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = 'NEED_HERE_A_SECRET_KEY';
 
+const { PubSub } = require('graphql-subscriptions');
+const pubsub = new PubSub();
+
 console.log('connecting to', process.env.MONGODB_URI);
 
 mongoose
@@ -70,6 +73,10 @@ const typeDefs = gql`
     createUser(username: String!, favoriteGenre: String!): User
     login(username: String!, password: String!): Token
   }
+
+  type Subscription {
+    bookAdded: Book!
+  }
 `;
 
 const resolvers = {
@@ -108,6 +115,10 @@ const resolvers = {
           const newAuthor = await authorToSave.save();
           const book = new Book({ ...args, author: newAuthor.id });
           const newBook = await book.save();
+          book.author = authorToSave;
+          pubsub.publish('BOOK_ADDED', {
+            bookAdded: book,
+          });
           return newBook;
         } catch (error) {
           throw new UserInputError(error.message, {
@@ -119,6 +130,9 @@ const resolvers = {
       try {
         const book = new Book({ ...args, author: author.id });
         const newBook = await book.save();
+
+        book.author = author;
+        pubsub.publish('BOOK_ADDED', { bookAdded: book });
         return newBook;
       } catch (error) {
         throw new UserInputError(error.message, {
@@ -177,6 +191,12 @@ const resolvers = {
       return books.length;
     },
   },
+
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED']),
+    },
+  },
 };
 
 const server = new ApolloServer({
@@ -192,6 +212,7 @@ const server = new ApolloServer({
   },
 });
 
-server.listen().then(({ url }) => {
+server.listen().then(({ url, subscriptionsUrl }) => {
   console.log(`Server ready at ${url}`);
+  console.log(`Subscriptions ready at ${subscriptionsUrl}`);
 });
